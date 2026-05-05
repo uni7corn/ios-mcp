@@ -23,7 +23,7 @@
 
 #define MCP_PROTOCOL_VERSION @"2025-03-26"
 #define MCP_SERVER_NAME      @"ios-mcp"
-#define MCP_SERVER_VERSION   @"1.0.1"
+#define MCP_SERVER_VERSION   @"1.0.2"
 #define HTTP_BUF_SIZE        (256 * 1024)
 #define MCP_UPLOAD_DIR       @"/tmp/ios-mcp-uploads"
 #define MCP_MAX_UPLOAD_BYTES (500LL * 1024LL * 1024LL)
@@ -195,31 +195,33 @@ static NSDictionary *MCPRandomizedTapPointForElement(NSDictionary *element) {
     double y = 0.0;
     double width = 0.0;
     double height = 0.0;
+
     if (!MCPRectValuesFromDictionary(rect, &x, &y, &width, &height)) {
         NSDictionary *tap = [element[@"tap"] isKindOfClass:[NSDictionary class]] ? element[@"tap"] : nil;
         return tap;
     }
 
-    // Stay away from edges, but keep enough room for very small controls.
-    double marginX = width > 4.0 ? MIN(8.0, width * 0.2) : 0.0;
-    double marginY = height > 4.0 ? MIN(8.0, height * 0.2) : 0.0;
-    double minX = x + marginX;
-    double maxX = x + width - marginX;
-    double minY = y + marginY;
-    double maxY = y + height - marginY;
-    if (maxX <= minX) {
-        minX = x;
-        maxX = x + width;
-    }
-    if (maxY <= minY) {
-        minY = y;
-        maxY = y + height;
-    }
+    // 控制随机点击范围：只在 rect 中间区域随机
+    // 0.5 表示中间 50% 区域
+    // 例如 rect: x=0 y=0 width=80 height=40
+    // 最终随机区域: x=20 y=10 width=40 height=20
+    double centerRatio = 0.5;
+
+    double tapWidth = width * centerRatio;
+    double tapHeight = height * centerRatio;
+
+    double minX = x + (width - tapWidth) / 2.0;
+    double maxX = minX + tapWidth;
+
+    double minY = y + (height - tapHeight) / 2.0;
+    double maxY = minY + tapHeight;
 
     double tapX = minX + ((maxX - minX) * MCPRandomUnit());
     double tapY = minY + ((maxY - minY) * MCPRandomUnit());
+
     tapX = MIN(MAX(tapX, x), x + width);
     tapY = MIN(MAX(tapY, y), y + height);
+
     return @{
         @"x": @(MCPRoundedScreenPoint(tapX)),
         @"y": @(MCPRoundedScreenPoint(tapY))
@@ -715,7 +717,7 @@ static NSDictionary *MCPRandomizedTapPointForElement(NSDictionary *element) {
                 @"name": MCP_SERVER_NAME,
                 @"version": MCP_SERVER_VERSION
             },
-            @"instructions": @"Use ios-mcp to inspect and operate the connected iPhone.\n\nGetting started: call get_frontmost_app, get_screen_info, get_ui_elements, and screenshot to understand the current device state.\n\nTouch and gestures: use screen point coordinates for tap_screen, swipe_screen, long_press, double_tap, and drag_and_drop. For Flutter or custom-rendered apps, accessibility may expose only a container such as FlutterView; use screenshot plus coordinates in that case.\n\nText input: use input_text for fast bulk text via pasteboard, type_text for character-by-character HID simulation, and press_key for special keys (enter, delete, tab, etc.).\n\nHardware buttons: press_home, press_power, press_volume_up, press_volume_down, toggle_mute.\n\nClipboard: get_clipboard and set_clipboard to read/write clipboard contents.\n\nScreenshot: the screenshot tool returns MCP image content, not text — result.content[0].data contains the base64 JPEG payload and result.content[0].mimeType is usually image/jpeg.\n\nApp management: launch_app, kill_app, list_apps, list_running_apps, get_frontmost_app. launch_app waits until the target app is actually frontmost before returning, so do not immediately re-issue redundant foreground checks unless you need to verify a later transition. To install an app from the computer, first upload raw IPA bytes to POST /upload_file (for example: curl -H 'X-Filename: app.ipa' --data-binary @app.ipa http://device-ip:8090/upload_file). The upload response returns a device path; pass that path to install_app. To install an IPA already on the phone, call install_app directly with its device path. Unsigned or fakesigned IPAs are supported. To uninstall: use list_apps to find the bundle_id, then call uninstall_app.\n\nDevice control: get_brightness/set_brightness, get_volume/set_volume, open_url (supports http/https and URL schemes like tel://, prefs:root=WIFI, etc.).\n\nDevice info: get_device_info for model, iOS version, battery, storage, and memory.\n\nShell: run_command to execute shell commands on the device (timeout default 10s, max 30s)."
+            @"instructions": @"Use ios-mcp to inspect and operate the connected iPhone.\n\nGetting started: call get_frontmost_app, get_screen_info, get_ui_elements, and screenshot to understand the current device state.\n\nTouch and gestures: use screen point coordinates for tap_screen, swipe_screen, long_press, double_tap, and drag_and_drop. For Flutter or custom-rendered apps, accessibility may expose only a container such as FlutterView; use screenshot plus coordinates in that case.\n\nText input: use input_text for fast bulk text through system keyboard events, type_text for character-by-character text input, and press_key for special keys (enter, delete, tab, etc.).\n\nHardware buttons: press_home, press_power, press_volume_up, press_volume_down, toggle_mute.\n\nClipboard: get_clipboard and set_clipboard to read/write clipboard contents.\n\nScreenshot: the screenshot tool returns MCP image content, not text — result.content[0].data contains the base64 JPEG payload and result.content[0].mimeType is usually image/jpeg.\n\nApp management: launch_app, kill_app, list_apps, list_running_apps, get_frontmost_app. launch_app waits until the target app is actually frontmost before returning, so do not immediately re-issue redundant foreground checks unless you need to verify a later transition. To install an app from the computer, first upload raw IPA bytes to POST /upload_file (for example: curl -H 'X-Filename: app.ipa' --data-binary @app.ipa http://device-ip:8090/upload_file). The upload response returns a device path; pass that path to install_app. To install an IPA already on the phone, call install_app directly with its device path. Unsigned or fakesigned IPAs are supported. To uninstall: use list_apps to find the bundle_id, then call uninstall_app.\n\nDevice control: get_brightness/set_brightness, get_volume/set_volume, open_url (supports http/https and URL schemes like tel://, prefs:root=WIFI, etc.).\n\nDevice info: get_device_info for model, iOS version, battery, storage, and memory.\n\nShell: run_command to execute shell commands on the device (timeout default 10s, max 30s)."
         }
     };
 }
@@ -913,7 +915,7 @@ static NSDictionary *MCPRandomizedTapPointForElement(NSDictionary *element) {
         // ---- Text input tools ----
         @{
             @"name": @"input_text",
-            @"description": @"Input text into the focused text field via pasteboard (fast, bulk input)",
+            @"description": @"Input text into the focused text field through system keyboard events (fast, bulk input)",
             @"inputSchema": @{
                 @"type": @"object",
                 @"properties": @{
@@ -924,7 +926,7 @@ static NSDictionary *MCPRandomizedTapPointForElement(NSDictionary *element) {
         },
         @{
             @"name": @"type_text",
-            @"description": @"Type text using simulated keyboard events for ASCII, and pasteboard fallback for Chinese, emoji, and other non-ASCII text",
+            @"description": @"Type text through system keyboard text events, with HID fallback for ASCII keyboard characters",
             @"inputSchema": @{
                 @"type": @"object",
                 @"properties": @{
@@ -940,7 +942,7 @@ static NSDictionary *MCPRandomizedTapPointForElement(NSDictionary *element) {
             @"inputSchema": @{
                 @"type": @"object",
                 @"properties": @{
-                    @"key": @{@"type": @"string", @"description": @"Key name: enter, tab, escape, delete, backspace, space, up, down, left, right"}
+                    @"key": @{@"type": @"string", @"description": @"Key name: enter, tab, delete, backspace, space, up, down, left, right"}
                 },
                 @"required": @[@"key"]
             }
