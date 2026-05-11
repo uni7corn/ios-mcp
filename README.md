@@ -111,4 +111,10 @@ http://设备IP:8090/health
 
 ## 许可
 
-MIT License
+本项目自有代码使用 MIT License，详见 [LICENSE](LICENSE)。
+
+使用、修改、分发或合并本项目自有源码及其重要部分时，应保留版权声明和许可证文本。[NOTICE](NOTICE) 提供项目出处和免责说明。
+
+本项目按 “AS IS” 方式提供，不提供任何明示或暗示担保。因使用、修改、分发、部署或运行本项目导致的设备异常、数据丢失、服务中断、账号风险、系统损坏、安全问题、商业损失或其他直接/间接影响，作者不承担责任。
+
+项目中包含的第三方组件（如 AppSync Unified、appinst、ldid、OpenSSL、libplist、libzip）遵循各自的开源协议，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
